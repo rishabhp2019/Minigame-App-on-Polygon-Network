@@ -4,7 +4,8 @@ let cnv, ctx;
 let key_pressed = {};
 
 let score = 0;
-let timer = 10;
+let opponent_score = 0;
+let timer = 90;
 let chickenX = 770;
 let chickenY = 750;
 let lanes = [[], [], [], [], [], []];
@@ -45,19 +46,19 @@ const socket = io();
 socket.on("start", () => {
     startGame();
 });
+socket.on("opponent_scored", () => {
+    opponent_score++;
+});
 socket.on('victory', (message) => {
     timer = 0;
-    console.log(message);
-    drawResult(message);
+    handleGameEnd(message);
 });
 socket.on('defeat', (message) =>  {
     timer = 0;
-    console.log(message);
-    drawResult(message);
+    handleGameEnd(message);
 });
 socket.on('tie', (message) =>  {
-    console.log(message);
-    drawResult(message);
+    handleGameEnd(message);
 });
 
 // Initialize screen when window loads.
@@ -153,6 +154,7 @@ function update() {
     // Update score.
     if(chickenY < 50) {
         score++;
+        socket.emit("scored");
         chickenX = 770;
         chickenY = 750;
     }
@@ -241,6 +243,9 @@ function render() {
     ctx.fillStyle = "white";
     ctx.fillText("Score: " + score, 50, 50);
 
+    // Opponent score display.
+    ctx.fillText("Opponent Score: " + opponent_score, 1450, 50);
+
     // Timer display.
     ctx.fillText(timer, 807, 50);
 
@@ -255,16 +260,40 @@ function render() {
     }
 }
 
-// Print end game message on canvas.
-function drawResult(message) {
+// Draw game end screen.
+function handleGameEnd(message) {
+    // Clear canvas and set styles.
     ctx.clearRect(0, 0, cnv.width, cnv.height);
     ctx.font = "50px Verdana";
     ctx.fillStyle = "white";
+
+    // Center text based on length.
     if(message.length < 20) {
         ctx.fillText(message, 650, 450);
     }
     else {
         ctx.fillText(message, 450, 450);
     }
-}
 
+    // Draw play again button.
+    ctx.beginPath();
+    ctx.strokeStyle = 'white';
+    ctx.setLineDash([]);
+    ctx.rect(780, 500, 150, 75);
+    ctx.stroke();
+
+    ctx.font = "25px Verdana";
+    ctx.fillText("Play Again", 790, 540);
+
+    // If play again button clicked, refresh page to establish new socket.
+    cnv.addEventListener('click', function(e) {
+        let mousePosX = e.clientX;
+        let mousePosY = e.clientY;
+        console.log(mousePosX);
+        console.log(mousePosY);
+
+        if(mousePosX > 1312 && mousePosX < 1536 && mousePosY > 816 && mousePosY < 928) {
+            window.location.href = 'http://localhost:3000';
+        }   
+    });
+}

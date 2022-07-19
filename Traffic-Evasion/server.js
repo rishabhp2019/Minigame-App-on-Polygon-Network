@@ -1,4 +1,3 @@
-const path = require("path");
 const express = require("express");
 const app = express();
 const httpServer = require("http").createServer(app);
@@ -23,6 +22,26 @@ io.on("connection", socket => {
     if(!matched) {
         rooms.push([{"socket_id" : socket.id, "score": -1}]);
     }
+
+    // To update opponent score for both players.
+    socket.on('scored', () => {
+        for(let i = 0; i < rooms.length; i++) {
+            if(rooms[i].length == 2) {
+                p1 = rooms[i][0];
+                p2 = rooms[i][1];
+
+                // If id matches p1.
+                if (p1["socket_id"] == socket.id) {
+                    io.to(p2["socket_id"]).emit("opponent_scored");
+                }
+                // If id matches p2.
+                else if (p2["socket_id"] == socket.id) {
+                    io.to(p1["socket_id"]).emit("opponent_scored");   
+                }
+
+            }
+        }
+    })
 
     // Handle gameover emitted from client.
     socket.on('gameover', (score) => {
@@ -82,17 +101,14 @@ io.on("connection", socket => {
                 if(p1["socket_id"] == socket.id) {
                     io.to(p2["socket_id"]).emit("victory", "Opponent disconnected. You won!");
                     rooms.splice(i, 1);
-                    console.log(rooms);
                 }
                 if(p2["socket_id"] == socket.id) {  
                     io.to(p1["socket_id"]).emit("victory", "Opponent disconnected. You won!");
                     rooms.splice(i, 1);
-                    console.log(rooms);
                 }
             }
         }
     });
-    console.log(rooms);
 });
 
 

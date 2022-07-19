@@ -1,12 +1,10 @@
-const socket = io()
-
 // Define variables for game.
 let time;
 let cnv, ctx;
 let key_pressed = {};
 
 let score = 0;
-let timer = 90;
+let timer = 10;
 let chickenX = 770;
 let chickenY = 750;
 let lanes = [[], [], [], [], [], []];
@@ -42,6 +40,30 @@ white_van_rev_img.src = "images/white_van_rev.png";
 
 let car_imgs = [blue_car_img, blue_car_img_rev, red_car_img, red_car_img_rev, yellow_car_img, yellow_car_img_rev, white_van_img, white_van_rev_img];
 
+// Defining client socket and relevant events.
+const socket = io();
+socket.on("start", () => {
+    startGame();
+});
+socket.on('victory', (message) => {
+    timer = 0;
+    console.log(message);
+    drawResult(message);
+});
+socket.on('defeat', (message) =>  {
+    timer = 0;
+    console.log(message);
+    drawResult(message);
+});
+socket.on('tie', (message) =>  {
+    console.log(message);
+    drawResult(message);
+});
+
+// Initialize screen when window loads.
+window.onload = function() {
+    initCanvas();
+}
 
 // Listen for start of key presses.
 window.addEventListener('keydown', function(e) {
@@ -75,20 +97,6 @@ window.addEventListener('keyup', function(e) {
     }
 });
 
-// Begin game on loadup.
-window.onload = function() {  
-    initCanvas();
-    time = setInterval(() => {
-        if(timer > 0) {
-            timer--;
-        }
-        else {
-            clearInterval(time);
-        }
-    }, 1000)
-    window.requestAnimationFrame(gameLoop);
-}
-
 // Initialize canvas.
 function initCanvas() {
     cnv = document.getElementsByClassName('game_screen')[0];
@@ -96,13 +104,32 @@ function initCanvas() {
     let scale = window.devicePixelRatio;
     cnv.width = cnv.getBoundingClientRect().width * scale;
     cnv.height = cnv.getBoundingClientRect().height * scale;
+
+    ctx.font = "50px Verdana";
+    ctx.fillStyle = "white";
+    ctx.fillText("Finding opponent...", 600, 450);
+}
+
+// Begin game on loadup.
+function startGame() { 
+    initCanvas(); 
+    time = setInterval(() => {
+        if(timer > 0) {
+            timer--;
+        }
+        else {
+            socket.emit("gameover", score);
+            clearInterval(time);
+        }
+    }, 1000)
+    window.requestAnimationFrame(gameLoop);
 }
 
 // Primary loop that continuously updates game state and renders the information onto the screen.
 function gameLoop() {
-    update();
-    render();
     if(timer > 0) {
+        update();
+        render();
         window.requestAnimationFrame(gameLoop);
     }
 }
@@ -221,12 +248,23 @@ function render() {
     ctx.drawImage(chicken_img, chickenX, chickenY);
 
     // Cars. 
-    //console.log(lanes);
     for(let i = 0; i < lanes.length; i++) {
         for(let j = 0; j < lanes[i].length; j++) {
             ctx.drawImage(car_imgs[lanes[i][j]["car"]], lanes[i][j]["x"], lanes[i][j]["y"])
         }
     }
+}
 
+// Print end game message on canvas.
+function drawResult(message) {
+    ctx.clearRect(0, 0, cnv.width, cnv.height);
+    ctx.font = "50px Verdana";
+    ctx.fillStyle = "white";
+    if(message.length < 20) {
+        ctx.fillText(message, 650, 450);
+    }
+    else {
+        ctx.fillText(message, 450, 450);
+    }
 }
 
